@@ -183,3 +183,18 @@ core.register_entity("alpaca:alpaca", {
 		self.object:remove()
 	end,
 })
+
+core.register_craftitem("alpaca:spawn_egg", {
+	description = "Alpaca Spawn Egg",
+	inventory_image = "alpaca_spawn_egg.png",
+	on_place = function(itemstack, placer, pointed_thing)
+		if pointed_thing.type == "node" then
+			local pos = pointed_thing.above
+			core.add_entity(pos, "alpaca:alpaca")
+			if not core.is_creative_enabled(placer:get_player_name()) then
+				itemstack:take_item()
+			end
+			return itemstack
+		end
+	end,
+})
