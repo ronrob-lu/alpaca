@@ -1,0 +1,17 @@
+To run commands:
+	/grantme all
+
+Daytime:
+	/time 8000
+
+To spawn an entity:
+	/spawnentity animalia:sheep
+	/spawnentity lmgjam_notloc_alpac_alachia:alpaca
+	
+	
+My Mod:
+	lmgjam_notloc_alpac_alachia
+	Anims
+		Idle: 0 - 110
+		Walk/Run: 115 - 135
+		Eat: 140 - 180
