@@ -1,6 +1,5 @@
 alpaca = {
 	active_entities = 0,
-	active_refs = {},
 }
 
 alpaca.colors = {
@@ -12,28 +11,28 @@ alpaca.colors = {
 
 alpaca.genetics = {
 	["white"] = {
-		texture = "notloc_alpaca.png",
+		texture = "alpaca_white.png",
 		speed = 2,
 		radius = 5,
 		drop = "wool:white",
 		energy_drain = 100 / 1200, -- standard 1 day (1200s)
 	},
 	["light_fawn"] = {
-		texture = "notloc_alpaca.png",
+		texture = "alpaca_light_fawn.png",
 		speed = 1, -- leisurely/slow pace
 		radius = 15, -- huge grass detection radius
 		drop = "wool:beige", -- beige wool doesn't exist by default usually, maybe wool:white is safe, but requirements said beige, we'll try wool:grey or wool:orange depending on default mod. Let's use wool:beige if it exists or fallback later. Minetest has wool:brown, wool:orange, etc. Requirements say "wool:beige". Wait, standard wool are: white, grey, dark_grey, black, blue, cyan, green, dark_green, yellow, orange, red, magenta, violet. Let's just output "wool:brown" or what it requires. Actually requirement says: "Drops 'wool:beige' on death."
 		energy_drain = 100 / 1200,
 	},
 	["dark_brown"] = {
-		texture = "notloc_alpaca.png",
+		texture = "alpaca_dark_brown.png",
 		speed = 4, -- extremely fast
 		radius = 5,
 		drop = "wool:brown",
 		energy_drain = 300 / 1200, -- high energy consumption
 	},
 	["true_black"] = {
-		texture = "notloc_alpaca.png",
+		texture = "alpaca_true_black.png",
 		speed = 1, -- slow
 		radius = 2, -- small grass detection
 		drop = "wool:black",
@@ -45,12 +44,11 @@ core.register_entity("alpaca:alpaca", {
 	initial_properties = {
 		physical = true,
 		collide_with_objects = true,
-		collisionbox = {-0.4, 0.0, -0.4, 0.4, 0.8, 0.4},
+		collisionbox = {-0.4, -0.01, -0.4, 0.4, 1.2, 0.4},
 		visual = "mesh",
-		mesh = "notloc_alpaca.glb",
-		visual_size = {x = 1, y = 1, z = 1},
-		textures = {"notloc_alpaca.png"},
-		stepheight = 1.1,
+		mesh = "alpaca.glb",
+		visual_size = {x = 1, y = 2, z = 1},
+		textures = {"alpaca_white.png"},
 	},
 
 	on_activate = function(self, staticdata)
@@ -73,12 +71,10 @@ core.register_entity("alpaca:alpaca", {
 		end
 
 		alpaca.active_entities = alpaca.active_entities + 1
-		alpaca.active_refs[self] = true
 	end,
 
 	on_deactivate = function(self)
 		alpaca.active_entities = math.max(0, alpaca.active_entities - 1)
-		alpaca.active_refs[self] = nil
 	end,
 
 	get_staticdata = function(self)
@@ -86,19 +82,6 @@ core.register_entity("alpaca:alpaca", {
 			color = self.color,
 			energy = self.energy
 		})
-	end,
-
-
-	set_animation = function(self, anim)
-		if self.current_anim == anim then return end
-		self.current_anim = anim
-		if anim == "stand" then
-			self.object:set_animation({x = 1, y = 110}, 48, 0, true)
-		elseif anim == "walk" then
-			self.object:set_animation({x = 115, y = 135}, 24, 0, true)
-		elseif anim == "eat" then
-			self.object:set_animation({x = 140, y = 180}, 48, 0, false)
-		end
 	end,
 
 	on_step = function(self, dtime)
@@ -113,8 +96,8 @@ core.register_entity("alpaca:alpaca", {
 		end
 
 		-- Reproduction
-		if self.energy >= 450 and alpaca.active_entities < 100 then
-			self.energy = self.energy - 400
+		if self.energy >= 100 and alpaca.active_entities < 100 then
+			self.energy = self.energy - 50
 			local pos = self.object:get_pos()
 			if pos then
 				local child_color = self.color
@@ -145,72 +128,44 @@ core.register_entity("alpaca:alpaca", {
 		if self.timer > 1.0 then
 			self.timer = 0
 
-			-- Check if standing on grass
-			local pos_below = {x = math.floor(pos.x + 0.5), y = math.floor(pos.y + 0.5) - 1, z = math.floor(pos.z + 0.5)}
-			local node_below = core.get_node(pos_below)
+			local radius = genetic_data.radius
+			local p_min = {x=pos.x-radius, y=pos.y-2, z=pos.z-radius}
+			local p_max = {x=pos.x+radius, y=pos.y+2, z=pos.z+radius}
 
-			if node_below and node_below.name == "default:dirt_with_grass" then
-				-- Consume grass directly below
-				core.set_node(pos_below, {name="default:dirt"})
-				self.energy = self.energy + 20
-				self.object:set_velocity({x=0, y=self.object:get_velocity().y, z=0})
-							self:set_animation("stand")
-						else
-				local radius = genetic_data.radius
-				local p_min = {x=pos.x-radius, y=pos.y-2, z=pos.z-radius}
-				local p_max = {x=pos.x+radius, y=pos.y+2, z=pos.z+radius}
+			local nodes = core.find_nodes_in_area(p_min, p_max, {"default:dirt_with_grass"})
 
-				local nodes = core.find_nodes_in_area(p_min, p_max, {"default:dirt_with_grass"})
+			if #nodes > 0 then
+				local target = nodes[1]
+				local dist_sq = (target.x - pos.x)^2 + (target.z - pos.z)^2
 
-				if #nodes > 0 then
-					local closest = nil
-					local closest_dist_sq = math.huge
-
-					for _, target in ipairs(nodes) do
-						local dist_sq = (target.x - pos.x)^2 + (target.z - pos.z)^2
-						if dist_sq < closest_dist_sq then
-							closest_dist_sq = dist_sq
-							closest = target
-						end
-					end
-
-					if closest then
-						local target = closest
-						local dist_sq = closest_dist_sq
-
-						if dist_sq < 1.5 then
-							-- Consume grass
-							core.set_node(target, {name="default:dirt"})
-							self.energy = self.energy + 20
-							self.object:set_velocity({x=0, y=self.object:get_velocity().y, z=0})
-							self:set_animation("stand")
-						else
-							-- Move towards grass
-							local dx = target.x - pos.x
-							local dz = target.z - pos.z
-							local dist = math.sqrt(dist_sq)
-							local vx = (dx/dist) * genetic_data.speed
-							local vz = (dz/dist) * genetic_data.speed
-							self.object:set_velocity({x=vx, y=self.object:get_velocity().y, z=vz})
-
-							-- Simple facing calculation
-							local yaw = math.atan2(-dx, dz)
-							self.object:set_yaw(yaw)
-						end
-					end
+				if dist_sq < 1.5 then
+					-- Consume grass
+					core.set_node(target, {name="default:dirt"})
+					self.energy = self.energy + 20
+					self.object:set_velocity({x=0, y=self.object:get_velocity().y, z=0})
 				else
-					-- Random roaming if no grass
-					if math.random() < 0.2 then
-						local yaw = math.random() * math.pi * 2
-						self.object:set_yaw(yaw)
-						local vx = math.sin(yaw) * (genetic_data.speed * 0.5)
-						local vz = math.cos(yaw) * (genetic_data.speed * 0.5)
-						self.object:set_velocity({x=-vx, y=self.object:get_velocity().y, z=vz})
-						self:set_animation("walk")
-					elseif math.random() < 0.2 then
-						self.object:set_velocity({x=0, y=self.object:get_velocity().y, z=0})
-							self:set_animation("stand")
-					end
+					-- Move towards grass
+					local dx = target.x - pos.x
+					local dz = target.z - pos.z
+					local dist = math.sqrt(dist_sq)
+					local vx = (dx/dist) * genetic_data.speed
+					local vz = (dz/dist) * genetic_data.speed
+					self.object:set_velocity({x=vx, y=self.object:get_velocity().y, z=vz})
+
+					-- Simple facing calculation
+					local yaw = math.atan2(-dx, dz)
+					self.object:set_yaw(yaw)
+				end
+			else
+				-- Random roaming if no grass
+				if math.random() < 0.2 then
+					local yaw = math.random() * math.pi * 2
+					self.object:set_yaw(yaw)
+					local vx = math.sin(yaw) * (genetic_data.speed * 0.5)
+					local vz = math.cos(yaw) * (genetic_data.speed * 0.5)
+					self.object:set_velocity({x=-vx, y=self.object:get_velocity().y, z=vz})
+				elseif math.random() < 0.2 then
+					self.object:set_velocity({x=0, y=self.object:get_velocity().y, z=0})
 				end
 			end
 		end
@@ -241,23 +196,5 @@ core.register_craftitem("alpaca:spawn_egg", {
 			end
 			return itemstack
 		end
-	end,
-})
-
-core.register_chatcommand("kill_alpacas", {
-	description = "Kill all alpacas",
-	privs = {server = true},
-	func = function(name, param)
-		local count = 0
-		for ref, _ in pairs(alpaca.active_refs) do
-			if ref.object then
-				ref.object:remove()
-				count = count + 1
-			end
-		end
-		-- Re-init tables just in case on_deactivate doesn't clear them all synchronously
-		alpaca.active_refs = {}
-		alpaca.active_entities = 0
-		return true, "Removed " .. count .. " alpacas."
 	end,
 })
