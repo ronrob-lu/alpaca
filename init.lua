@@ -1,5 +1,6 @@
 alpaca = {
 	active_entities = 0,
+	active_refs = {},
 }
 
 alpaca.colors = {
@@ -44,11 +45,12 @@ core.register_entity("alpaca:alpaca", {
 	initial_properties = {
 		physical = true,
 		collide_with_objects = true,
-		collisionbox = {-0.4, -0.01, -0.4, 0.4, 2.4, 0.4},
+		collisionbox = {-0.4, -0.01, -0.4, 0.4, 1.2, 0.4},
 		visual = "mesh",
 		mesh = "alpaca.b3d",
-		visual_size = {x = 10, y = 20, z = 10},
+		visual_size = {x = 10, y = 10, z = 10},
 		textures = {"alpaca_white.png"},
+		stepheight = 1.1,
 	},
 
 	on_activate = function(self, staticdata)
@@ -71,10 +73,12 @@ core.register_entity("alpaca:alpaca", {
 		end
 
 		alpaca.active_entities = alpaca.active_entities + 1
+		alpaca.active_refs[self] = true
 	end,
 
 	on_deactivate = function(self)
 		alpaca.active_entities = math.max(0, alpaca.active_entities - 1)
+		alpaca.active_refs[self] = nil
 	end,
 
 	get_staticdata = function(self)
@@ -96,8 +100,8 @@ core.register_entity("alpaca:alpaca", {
 		end
 
 		-- Reproduction
-		if self.energy >= 100 and alpaca.active_entities < 100 then
-			self.energy = self.energy - 50
+		if self.energy >= 450 and alpaca.active_entities < 100 then
+			self.energy = self.energy - 400
 			local pos = self.object:get_pos()
 			if pos then
 				local child_color = self.color
@@ -220,5 +224,23 @@ core.register_craftitem("alpaca:spawn_egg", {
 			end
 			return itemstack
 		end
+	end,
+})
+
+core.register_chatcommand("kill_alpacas", {
+	description = "Kill all alpacas",
+	privs = {server = true},
+	func = function(name, param)
+		local count = 0
+		for ref, _ in pairs(alpaca.active_refs) do
+			if ref.object then
+				ref.object:remove()
+				count = count + 1
+			end
+		end
+		-- Re-init tables just in case on_deactivate doesn't clear them all synchronously
+		alpaca.active_refs = {}
+		alpaca.active_entities = 0
+		return true, "Removed " .. count .. " alpacas."
 	end,
 })
