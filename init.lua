@@ -12,28 +12,28 @@ alpaca.colors = {
 
 alpaca.genetics = {
 	["white"] = {
-		texture = "alpaca_white.png",
+		texture = "notloc_alpaca.png",
 		speed = 2,
 		radius = 5,
 		drop = "wool:white",
 		energy_drain = 100 / 1200, -- standard 1 day (1200s)
 	},
 	["light_fawn"] = {
-		texture = "alpaca_light_fawn.png",
+		texture = "notloc_alpaca.png",
 		speed = 1, -- leisurely/slow pace
 		radius = 15, -- huge grass detection radius
 		drop = "wool:beige", -- beige wool doesn't exist by default usually, maybe wool:white is safe, but requirements said beige, we'll try wool:grey or wool:orange depending on default mod. Let's use wool:beige if it exists or fallback later. Minetest has wool:brown, wool:orange, etc. Requirements say "wool:beige". Wait, standard wool are: white, grey, dark_grey, black, blue, cyan, green, dark_green, yellow, orange, red, magenta, violet. Let's just output "wool:brown" or what it requires. Actually requirement says: "Drops 'wool:beige' on death."
 		energy_drain = 100 / 1200,
 	},
 	["dark_brown"] = {
-		texture = "alpaca_dark_brown.png",
+		texture = "notloc_alpaca.png",
 		speed = 4, -- extremely fast
 		radius = 5,
 		drop = "wool:brown",
 		energy_drain = 300 / 1200, -- high energy consumption
 	},
 	["true_black"] = {
-		texture = "alpaca_true_black.png",
+		texture = "notloc_alpaca.png",
 		speed = 1, -- slow
 		radius = 2, -- small grass detection
 		drop = "wool:black",
@@ -45,11 +45,11 @@ core.register_entity("alpaca:alpaca", {
 	initial_properties = {
 		physical = true,
 		collide_with_objects = true,
-		collisionbox = {-0.4, -0.01, -0.4, 0.4, 1.2, 0.4},
+		collisionbox = {-0.4, 0.0, -0.4, 0.4, 0.8, 0.4},
 		visual = "mesh",
-		mesh = "alpaca.b3d",
-		visual_size = {x = 10, y = 10, z = 10},
-		textures = {"alpaca_white.png"},
+		mesh = "notloc_alpaca.glb",
+		visual_size = {x = 1, y = 1, z = 1},
+		textures = {"notloc_alpaca.png"},
 		stepheight = 1.1,
 	},
 
@@ -86,6 +86,19 @@ core.register_entity("alpaca:alpaca", {
 			color = self.color,
 			energy = self.energy
 		})
+	end,
+
+
+	set_animation = function(self, anim)
+		if self.current_anim == anim then return end
+		self.current_anim = anim
+		if anim == "stand" then
+			self.object:set_animation({x = 1, y = 110}, 48, 0, true)
+		elseif anim == "walk" then
+			self.object:set_animation({x = 115, y = 135}, 24, 0, true)
+		elseif anim == "eat" then
+			self.object:set_animation({x = 140, y = 180}, 48, 0, false)
+		end
 	end,
 
 	on_step = function(self, dtime)
@@ -141,7 +154,8 @@ core.register_entity("alpaca:alpaca", {
 				core.set_node(pos_below, {name="default:dirt"})
 				self.energy = self.energy + 20
 				self.object:set_velocity({x=0, y=self.object:get_velocity().y, z=0})
-			else
+							self:set_animation("stand")
+						else
 				local radius = genetic_data.radius
 				local p_min = {x=pos.x-radius, y=pos.y-2, z=pos.z-radius}
 				local p_max = {x=pos.x+radius, y=pos.y+2, z=pos.z+radius}
@@ -169,6 +183,7 @@ core.register_entity("alpaca:alpaca", {
 							core.set_node(target, {name="default:dirt"})
 							self.energy = self.energy + 20
 							self.object:set_velocity({x=0, y=self.object:get_velocity().y, z=0})
+							self:set_animation("stand")
 						else
 							-- Move towards grass
 							local dx = target.x - pos.x
@@ -191,8 +206,10 @@ core.register_entity("alpaca:alpaca", {
 						local vx = math.sin(yaw) * (genetic_data.speed * 0.5)
 						local vz = math.cos(yaw) * (genetic_data.speed * 0.5)
 						self.object:set_velocity({x=-vx, y=self.object:get_velocity().y, z=vz})
+						self:set_animation("walk")
 					elseif math.random() < 0.2 then
 						self.object:set_velocity({x=0, y=self.object:get_velocity().y, z=0})
+							self:set_animation("stand")
 					end
 				end
 			end
