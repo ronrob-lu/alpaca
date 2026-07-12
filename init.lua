@@ -44,10 +44,10 @@ core.register_entity("alpaca:alpaca", {
 	initial_properties = {
 		physical = true,
 		collide_with_objects = true,
-		collisionbox = {-0.4, -0.01, -0.4, 0.4, 1.2, 0.4},
+		collisionbox = {-0.4, -0.01, -0.4, 0.4, 2.4, 0.4},
 		visual = "mesh",
 		mesh = "alpaca.b3d",
-		visual_size = {x = 1, y = 2, z = 1},
+		visual_size = {x = 10, y = 20, z = 10},
 		textures = {"alpaca_white.png"},
 	},
 
@@ -128,44 +128,68 @@ core.register_entity("alpaca:alpaca", {
 		if self.timer > 1.0 then
 			self.timer = 0
 
-			local radius = genetic_data.radius
-			local p_min = {x=pos.x-radius, y=pos.y-2, z=pos.z-radius}
-			local p_max = {x=pos.x+radius, y=pos.y+2, z=pos.z+radius}
+			-- Check if standing on grass
+			local pos_below = {x = math.floor(pos.x + 0.5), y = math.floor(pos.y + 0.5) - 1, z = math.floor(pos.z + 0.5)}
+			local node_below = core.get_node(pos_below)
 
-			local nodes = core.find_nodes_in_area(p_min, p_max, {"default:dirt_with_grass"})
-
-			if #nodes > 0 then
-				local target = nodes[1]
-				local dist_sq = (target.x - pos.x)^2 + (target.z - pos.z)^2
-
-				if dist_sq < 1.5 then
-					-- Consume grass
-					core.set_node(target, {name="default:dirt"})
-					self.energy = self.energy + 20
-					self.object:set_velocity({x=0, y=self.object:get_velocity().y, z=0})
-				else
-					-- Move towards grass
-					local dx = target.x - pos.x
-					local dz = target.z - pos.z
-					local dist = math.sqrt(dist_sq)
-					local vx = (dx/dist) * genetic_data.speed
-					local vz = (dz/dist) * genetic_data.speed
-					self.object:set_velocity({x=vx, y=self.object:get_velocity().y, z=vz})
-
-					-- Simple facing calculation
-					local yaw = math.atan2(-dx, dz)
-					self.object:set_yaw(yaw)
-				end
+			if node_below and node_below.name == "default:dirt_with_grass" then
+				-- Consume grass directly below
+				core.set_node(pos_below, {name="default:dirt"})
+				self.energy = self.energy + 20
+				self.object:set_velocity({x=0, y=self.object:get_velocity().y, z=0})
 			else
-				-- Random roaming if no grass
-				if math.random() < 0.2 then
-					local yaw = math.random() * math.pi * 2
-					self.object:set_yaw(yaw)
-					local vx = math.sin(yaw) * (genetic_data.speed * 0.5)
-					local vz = math.cos(yaw) * (genetic_data.speed * 0.5)
-					self.object:set_velocity({x=-vx, y=self.object:get_velocity().y, z=vz})
-				elseif math.random() < 0.2 then
-					self.object:set_velocity({x=0, y=self.object:get_velocity().y, z=0})
+				local radius = genetic_data.radius
+				local p_min = {x=pos.x-radius, y=pos.y-2, z=pos.z-radius}
+				local p_max = {x=pos.x+radius, y=pos.y+2, z=pos.z+radius}
+
+				local nodes = core.find_nodes_in_area(p_min, p_max, {"default:dirt_with_grass"})
+
+				if #nodes > 0 then
+					local closest = nil
+					local closest_dist_sq = math.huge
+
+					for _, target in ipairs(nodes) do
+						local dist_sq = (target.x - pos.x)^2 + (target.z - pos.z)^2
+						if dist_sq < closest_dist_sq then
+							closest_dist_sq = dist_sq
+							closest = target
+						end
+					end
+
+					if closest then
+						local target = closest
+						local dist_sq = closest_dist_sq
+
+						if dist_sq < 1.5 then
+							-- Consume grass
+							core.set_node(target, {name="default:dirt"})
+							self.energy = self.energy + 20
+							self.object:set_velocity({x=0, y=self.object:get_velocity().y, z=0})
+						else
+							-- Move towards grass
+							local dx = target.x - pos.x
+							local dz = target.z - pos.z
+							local dist = math.sqrt(dist_sq)
+							local vx = (dx/dist) * genetic_data.speed
+							local vz = (dz/dist) * genetic_data.speed
+							self.object:set_velocity({x=vx, y=self.object:get_velocity().y, z=vz})
+
+							-- Simple facing calculation
+							local yaw = math.atan2(-dx, dz)
+							self.object:set_yaw(yaw)
+						end
+					end
+				else
+					-- Random roaming if no grass
+					if math.random() < 0.2 then
+						local yaw = math.random() * math.pi * 2
+						self.object:set_yaw(yaw)
+						local vx = math.sin(yaw) * (genetic_data.speed * 0.5)
+						local vz = math.cos(yaw) * (genetic_data.speed * 0.5)
+						self.object:set_velocity({x=-vx, y=self.object:get_velocity().y, z=vz})
+					elseif math.random() < 0.2 then
+						self.object:set_velocity({x=0, y=self.object:get_velocity().y, z=0})
+					end
 				end
 			end
 		end
