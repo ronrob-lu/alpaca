@@ -2,6 +2,10 @@
 
 A Minetest/Luanti mod that adds alpacas to the game!
 
+> [!NOTE]
+> This Mod does not include the models of MY alpaca instead the one of Colton Ramos
+> seen [here](https://youtu.be/U9DrbAFWaKM?t=152)
+
 ## Features
 
 - Alpacas spawn in the world.
