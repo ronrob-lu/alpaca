@@ -7,7 +7,7 @@ A Minetest/Luanti mod that adds alpacas to the game!
 > seen [here](https://youtu.be/U9DrbAFWaKM?t=152).£
 
 > [!WARNING]
-> Alpacas eat grass and it can destroy the map and they can reproduce and the cap sometimes does not work.
+> Alpacas eat grass and it can destroy the map. They can reproduce and the cap sometimes does not work.
 > Use /kill_alpacas in the chat if you get in trouble.
 
 ## Features
