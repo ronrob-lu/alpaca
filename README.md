@@ -3,8 +3,12 @@
 A Minetest/Luanti mod that adds alpacas to the game!
 
 > [!NOTE]
-> This Mod does not include the models of MY alpaca instead the one of Colton Ramos
-> seen [here](https://youtu.be/U9DrbAFWaKM?t=152)
+> This Mod does not include the models of MY alpaca, instead the one of Colton Ramos
+> seen [here](https://youtu.be/U9DrbAFWaKM?t=152).£
+
+> [!WARNING]
+> Alpacas eat grass and it can destroy the map and they can reproduce and the cap sometimes does not work.
+> Use /kill_alpacas in the chat if you get in trouble.
 
 ## Features
 
