@@ -153,12 +153,13 @@ core.register_entity("alpaca:alpaca", {
 			self.timer = 0
 
 			local vel = self.object:get_velocity()
-			local moving = math.abs(vel.x) > 0.1 or math.abs(vel.z) > 0.1
 
-			-- Stuck detection logic
-			if moving and self.last_pos then
-				local dist_moved = math.sqrt((pos.x - self.last_pos.x)^2 + (pos.y - self.last_pos.y)^2 + (pos.z - self.last_pos.z)^2)
-				if dist_moved < 0.5 then
+			-- Stuck detection logic: we check if we were *supposed* to be moving
+			if self.is_moving and self.last_pos then
+				-- Calculate horizontal distance moved
+				local dist_moved_h = math.sqrt((pos.x - self.last_pos.x)^2 + (pos.z - self.last_pos.z)^2)
+				-- If we tried to move but barely advanced horizontally over 1 sec
+				if dist_moved_h < 0.2 then
 					self.stuck_count = (self.stuck_count or 0) + 1
 				else
 					self.stuck_count = 0
@@ -168,10 +169,10 @@ core.register_entity("alpaca:alpaca", {
 			end
 			self.last_pos = {x=pos.x, y=pos.y, z=pos.z}
 
-			-- If stuck, try to jump or surrender grass tracking
-			if self.stuck_count and self.stuck_count >= 3 then
+			-- If stuck, try to jump and surrender grass tracking
+			if self.stuck_count and self.stuck_count >= 2 then
 				self.stuck_count = 0
-				self.stuck_timeout = 10.0 -- Ignore grass and wander for 10 seconds
+				self.stuck_timeout = 5.0 -- Ignore grass and wander for 5 seconds
 
 				-- Turn around randomly and jump
 				local yaw = self.object:get_yaw() or 0
@@ -188,7 +189,8 @@ core.register_entity("alpaca:alpaca", {
 					vy = 6.0 -- Approximate velocity for 1 block jump
 				end
 
-				self.object:set_velocity({x=-vx, y=vy, z=vz})
+				self.object:set_velocity({x=-vx, y=vy, z=-vz})
+				self.is_moving = true
 				self:set_animation("run")
 				return
 			end
@@ -202,6 +204,7 @@ core.register_entity("alpaca:alpaca", {
 				core.set_node(pos_below, {name="default:dirt"})
 				self.energy = self.energy + 20
 				self.object:set_velocity({x=0, y=self.object:get_velocity().y, z=0})
+				self.is_moving = false
 				self:set_animation("eat")
 			else
 				local should_find_grass = (not self.stuck_timeout or self.stuck_timeout <= 0)
@@ -235,6 +238,7 @@ core.register_entity("alpaca:alpaca", {
 						core.set_node(target, {name="default:dirt"})
 						self.energy = self.energy + 20
 						self.object:set_velocity({x=0, y=self.object:get_velocity().y, z=0})
+						self.is_moving = false
 						self:set_animation("eat")
 					else
 						-- Move towards grass
@@ -244,6 +248,7 @@ core.register_entity("alpaca:alpaca", {
 						local vx = (dx/dist) * genetic_data.speed
 						local vz = (dz/dist) * genetic_data.speed
 						self.object:set_velocity({x=vx, y=self.object:get_velocity().y, z=vz})
+						self.is_moving = true
 
 						-- Simple facing calculation
 						local yaw = math.atan2(-dx, dz)
@@ -262,7 +267,8 @@ core.register_entity("alpaca:alpaca", {
 						self.object:set_yaw(yaw)
 						local vx = math.sin(yaw) * (genetic_data.speed * 0.5)
 						local vz = math.cos(yaw) * (genetic_data.speed * 0.5)
-						self.object:set_velocity({x=-vx, y=self.object:get_velocity().y, z=vz})
+						self.object:set_velocity({x=-vx, y=self.object:get_velocity().y, z=-vz})
+						self.is_moving = true
 
 						if genetic_data.speed * 0.5 > 2 then
 							self:set_animation("run")
@@ -271,11 +277,13 @@ core.register_entity("alpaca:alpaca", {
 						end
 					elseif math.random() < 0.2 then
 						self.object:set_velocity({x=0, y=self.object:get_velocity().y, z=0})
+						self.is_moving = false
 						self:set_animation("stand")
 					else
 						-- Maintain standing animation if stationary
 						local c_vel = self.object:get_velocity()
 						if math.abs(c_vel.x) < 0.1 and math.abs(c_vel.z) < 0.1 and self.current_anim ~= "eat" then
+							self.is_moving = false
 							self:set_animation("stand")
 						end
 					end
