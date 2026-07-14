@@ -19,21 +19,21 @@ alpaca.genetics = {
 		energy_drain = 100 / 1200, -- standard 1 day (1200s)
 	},
 	["light_fawn"] = {
-		texture = "notloc_alpaca.png^[multiply:#e1ca9b",
+		texture = "notloc_alpaca.png^[multiply:#b57a59",
 		speed = 1, -- leisurely/slow pace
 		radius = 15, -- huge grass detection radius
 		drop = "wool:beige", -- beige wool doesn't exist by default usually, maybe wool:white is safe, but requirements said beige, we'll try wool:grey or wool:orange depending on default mod. Let's use wool:beige if it exists or fallback later. Minetest has wool:brown, wool:orange, etc. Requirements say "wool:beige". Wait, standard wool are: white, grey, dark_grey, black, blue, cyan, green, dark_green, yellow, orange, red, magenta, violet. Let's just output "wool:brown" or what it requires. Actually requirement says: "Drops 'wool:beige' on death."
 		energy_drain = 100 / 1200,
 	},
 	["dark_brown"] = {
-		texture = "notloc_alpaca.png^[multiply:#4b2b17",
+		texture = "notloc_alpaca.png^[multiply:#371c14",
 		speed = 4, -- extremely fast
 		radius = 5,
 		drop = "wool:brown",
 		energy_drain = 300 / 1200, -- high energy consumption
 	},
 	["true_black"] = {
-		texture = "notloc_alpaca.png^[multiply:#222222",
+		texture = "notloc_alpaca.png^[multiply:#111111",
 		speed = 1, -- slow
 		radius = 2, -- small grass detection
 		drop = "wool:black",
@@ -47,8 +47,8 @@ core.register_entity("alpaca:alpaca", {
 		collide_with_objects = true,
 		collisionbox = {-0.4, -0.01, -0.4, 0.4, 1.2, 0.4},
 		visual = "mesh",
-		mesh = "notloc_alpaca.obj",
-		visual_size = {x = 10, y = 10, z = 10},
+		mesh = "notloc_alpaca.glb",
+		visual_size = {x = 1, y = 1, z = 1},
 		stepheight = 1.1,
 		textures = {"notloc_alpaca.png"},
 	},
