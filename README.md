@@ -24,3 +24,4 @@ You can spawn an alpaca using the spawn egg:
 ## Credits
 
 - Alpaca Graphics: Colton Ramos 2025
+(Link to mod)[https://github.com/Xanthus1/lmg-appalachia-modpack/t]
