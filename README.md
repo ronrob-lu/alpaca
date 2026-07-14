@@ -20,3 +20,7 @@ You can spawn an alpaca using the spawn egg:
 
 - default
 - wool
+
+## Credits
+
+- Alpaca Graphics: Colton Ramos 2025
