@@ -118,8 +118,8 @@ core.register_entity("alpaca:alpaca", {
 		end
 
 		-- Reproduction
-		if self.energy >= 450 and alpaca.active_entities < 100 then
-			self.energy = self.energy - 400
+		if self.energy >= 800 and alpaca.active_entities < 100 then
+			self.energy = self.energy - 600
 			local pos = self.object:get_pos()
 			if pos then
 				local child_color = self.color
@@ -142,6 +142,11 @@ core.register_entity("alpaca:alpaca", {
 		local pos = self.object:get_pos()
 		if not pos then return end
 
+		-- Reduce stuck timeout if active
+		if self.stuck_timeout and self.stuck_timeout > 0 then
+			self.stuck_timeout = self.stuck_timeout - dtime
+		end
+
 		-- Slow AI updates (every 1 sec approx)
 		self.timer = (self.timer or 0) + dtime
 		if self.timer > 1.0 then
@@ -149,6 +154,44 @@ core.register_entity("alpaca:alpaca", {
 
 			local vel = self.object:get_velocity()
 			local moving = math.abs(vel.x) > 0.1 or math.abs(vel.z) > 0.1
+
+			-- Stuck detection logic
+			if moving and self.last_pos then
+				local dist_moved = math.sqrt((pos.x - self.last_pos.x)^2 + (pos.y - self.last_pos.y)^2 + (pos.z - self.last_pos.z)^2)
+				if dist_moved < 0.5 then
+					self.stuck_count = (self.stuck_count or 0) + 1
+				else
+					self.stuck_count = 0
+				end
+			else
+				self.stuck_count = 0
+			end
+			self.last_pos = {x=pos.x, y=pos.y, z=pos.z}
+
+			-- If stuck, try to jump or surrender grass tracking
+			if self.stuck_count and self.stuck_count >= 3 then
+				self.stuck_count = 0
+				self.stuck_timeout = 10.0 -- Ignore grass and wander for 10 seconds
+
+				-- Turn around randomly and jump
+				local yaw = self.object:get_yaw() or 0
+				yaw = yaw + math.pi + (math.random() - 0.5)
+				self.object:set_yaw(yaw)
+				local vx = math.sin(yaw) * genetic_data.speed
+				local vz = math.cos(yaw) * genetic_data.speed
+
+				-- Jump (1 block high)
+				local vy = vel.y
+				local pos_below = {x = math.floor(pos.x + 0.5), y = math.floor(pos.y - 0.5), z = math.floor(pos.z + 0.5)}
+				local node_below = core.get_node(pos_below)
+				if node_below and node_below.name ~= "air" then
+					vy = 6.0 -- Approximate velocity for 1 block jump
+				end
+
+				self.object:set_velocity({x=-vx, y=vy, z=vz})
+				self:set_animation("run")
+				return
+			end
 
 			-- Check if standing on grass
 			local pos_below = {x = math.floor(pos.x + 0.5), y = math.floor(pos.y + 0.5) - 1, z = math.floor(pos.z + 0.5)}
@@ -161,56 +204,59 @@ core.register_entity("alpaca:alpaca", {
 				self.object:set_velocity({x=0, y=self.object:get_velocity().y, z=0})
 				self:set_animation("eat")
 			else
-				local radius = genetic_data.radius
-				local p_min = {x=pos.x-radius, y=pos.y-2, z=pos.z-radius}
-				local p_max = {x=pos.x+radius, y=pos.y+2, z=pos.z+radius}
+				local should_find_grass = (not self.stuck_timeout or self.stuck_timeout <= 0)
+				local closest = nil
+				local closest_dist_sq = math.huge
 
-				local nodes = core.find_nodes_in_area(p_min, p_max, {"default:dirt_with_grass"})
+				if should_find_grass then
+					local radius = genetic_data.radius
+					local p_min = {x=pos.x-radius, y=pos.y-2, z=pos.z-radius}
+					local p_max = {x=pos.x+radius, y=pos.y+2, z=pos.z+radius}
 
-				if #nodes > 0 then
-					local closest = nil
-					local closest_dist_sq = math.huge
+					local nodes = core.find_nodes_in_area(p_min, p_max, {"default:dirt_with_grass"})
 
-					for _, target in ipairs(nodes) do
-						local dist_sq = (target.x - pos.x)^2 + (target.z - pos.z)^2
-						if dist_sq < closest_dist_sq then
-							closest_dist_sq = dist_sq
-							closest = target
-						end
-					end
-
-					if closest then
-						local target = closest
-						local dist_sq = closest_dist_sq
-
-						if dist_sq < 1.5 then
-							-- Consume grass
-							core.set_node(target, {name="default:dirt"})
-							self.energy = self.energy + 20
-							self.object:set_velocity({x=0, y=self.object:get_velocity().y, z=0})
-							self:set_animation("eat")
-						else
-							-- Move towards grass
-							local dx = target.x - pos.x
-							local dz = target.z - pos.z
-							local dist = math.sqrt(dist_sq)
-							local vx = (dx/dist) * genetic_data.speed
-							local vz = (dz/dist) * genetic_data.speed
-							self.object:set_velocity({x=vx, y=self.object:get_velocity().y, z=vz})
-
-							-- Simple facing calculation
-							local yaw = math.atan2(-dx, dz)
-							self.object:set_yaw(yaw)
-
-							if genetic_data.speed > 2 then
-								self:set_animation("run")
-							else
-								self:set_animation("walk")
+					if #nodes > 0 then
+						for _, target in ipairs(nodes) do
+							local dist_sq = (target.x - pos.x)^2 + (target.z - pos.z)^2
+							if dist_sq < closest_dist_sq then
+								closest_dist_sq = dist_sq
+								closest = target
 							end
 						end
 					end
+				end
+
+				if closest then
+					local target = closest
+					local dist_sq = closest_dist_sq
+
+					if dist_sq < 1.5 then
+						-- Consume grass
+						core.set_node(target, {name="default:dirt"})
+						self.energy = self.energy + 20
+						self.object:set_velocity({x=0, y=self.object:get_velocity().y, z=0})
+						self:set_animation("eat")
+					else
+						-- Move towards grass
+						local dx = target.x - pos.x
+						local dz = target.z - pos.z
+						local dist = math.sqrt(dist_sq)
+						local vx = (dx/dist) * genetic_data.speed
+						local vz = (dz/dist) * genetic_data.speed
+						self.object:set_velocity({x=vx, y=self.object:get_velocity().y, z=vz})
+
+						-- Simple facing calculation
+						local yaw = math.atan2(-dx, dz)
+						self.object:set_yaw(yaw)
+
+						if genetic_data.speed > 2 then
+							self:set_animation("run")
+						else
+							self:set_animation("walk")
+						end
+					end
 				else
-					-- Random roaming if no grass
+					-- Random roaming if no grass or if ignoring grass due to being stuck
 					if math.random() < 0.2 then
 						local yaw = math.random() * math.pi * 2
 						self.object:set_yaw(yaw)
