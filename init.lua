@@ -41,6 +41,13 @@ alpaca.genetics = {
 	},
 }
 
+local alpaca_animations = {
+	stand = {x = 1, y = 110, speed = 48, frame_blend = 0.3, loop = true},
+	walk = {x = 115, y = 135, speed = 24, frame_blend = 0.3, loop = true},
+	run = {x = 115, y = 135, speed = 48, frame_blend = 0.3, loop = true},
+	eat = {x = 140, y = 180, speed = 48, frame_blend = 0.3, loop = false}
+}
+
 core.register_entity("alpaca:alpaca", {
 	initial_properties = {
 		physical = true,
@@ -52,6 +59,14 @@ core.register_entity("alpaca:alpaca", {
 		stepheight = 1.1,
 		textures = {"notloc_alpaca.png"},
 	},
+
+	set_animation = function(self, anim_name)
+		if self.current_anim == anim_name then return end
+		local anim = alpaca_animations[anim_name]
+		if not anim then return end
+		self.object:set_animation({x = anim.x, y = anim.y}, anim.speed, anim.frame_blend, anim.loop)
+		self.current_anim = anim_name
+	end,
 
 	on_activate = function(self, staticdata)
 		local data = {}
@@ -71,6 +86,9 @@ core.register_entity("alpaca:alpaca", {
 				textures = {genetic_data.texture}
 			})
 		end
+
+		self.object:set_acceleration({x=0, y=-9.81, z=0})
+		self:set_animation("stand")
 
 		alpaca.active_entities = alpaca.active_entities + 1
 		alpaca.active_refs[self] = true
@@ -124,13 +142,13 @@ core.register_entity("alpaca:alpaca", {
 		local pos = self.object:get_pos()
 		if not pos then return end
 
-		-- Gravity
-		self.object:set_acceleration({x=0, y=-9.81, z=0})
-
 		-- Slow AI updates (every 1 sec approx)
 		self.timer = (self.timer or 0) + dtime
 		if self.timer > 1.0 then
 			self.timer = 0
+
+			local vel = self.object:get_velocity()
+			local moving = math.abs(vel.x) > 0.1 or math.abs(vel.z) > 0.1
 
 			-- Check if standing on grass
 			local pos_below = {x = math.floor(pos.x + 0.5), y = math.floor(pos.y + 0.5) - 1, z = math.floor(pos.z + 0.5)}
@@ -141,6 +159,7 @@ core.register_entity("alpaca:alpaca", {
 				core.set_node(pos_below, {name="default:dirt"})
 				self.energy = self.energy + 20
 				self.object:set_velocity({x=0, y=self.object:get_velocity().y, z=0})
+				self:set_animation("eat")
 			else
 				local radius = genetic_data.radius
 				local p_min = {x=pos.x-radius, y=pos.y-2, z=pos.z-radius}
@@ -169,6 +188,7 @@ core.register_entity("alpaca:alpaca", {
 							core.set_node(target, {name="default:dirt"})
 							self.energy = self.energy + 20
 							self.object:set_velocity({x=0, y=self.object:get_velocity().y, z=0})
+							self:set_animation("eat")
 						else
 							-- Move towards grass
 							local dx = target.x - pos.x
@@ -181,6 +201,12 @@ core.register_entity("alpaca:alpaca", {
 							-- Simple facing calculation
 							local yaw = math.atan2(-dx, dz)
 							self.object:set_yaw(yaw)
+
+							if genetic_data.speed > 2 then
+								self:set_animation("run")
+							else
+								self:set_animation("walk")
+							end
 						end
 					end
 				else
@@ -191,8 +217,21 @@ core.register_entity("alpaca:alpaca", {
 						local vx = math.sin(yaw) * (genetic_data.speed * 0.5)
 						local vz = math.cos(yaw) * (genetic_data.speed * 0.5)
 						self.object:set_velocity({x=-vx, y=self.object:get_velocity().y, z=vz})
+
+						if genetic_data.speed * 0.5 > 2 then
+							self:set_animation("run")
+						else
+							self:set_animation("walk")
+						end
 					elseif math.random() < 0.2 then
 						self.object:set_velocity({x=0, y=self.object:get_velocity().y, z=0})
+						self:set_animation("stand")
+					else
+						-- Maintain standing animation if stationary
+						local c_vel = self.object:get_velocity()
+						if math.abs(c_vel.x) < 0.1 and math.abs(c_vel.z) < 0.1 and self.current_anim ~= "eat" then
+							self:set_animation("stand")
+						end
 					end
 				end
 			end
