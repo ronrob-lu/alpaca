@@ -10,33 +10,38 @@ alpaca.colors = {
 	"true_black",
 }
 
+local is_mcl = core.get_modpath("mcl_core") ~= nil
+local node_dirt_with_grass = is_mcl and "mcl_core:dirt_with_grass" or "default:dirt_with_grass"
+local node_dirt = is_mcl and "mcl_core:dirt" or "default:dirt"
+
+
 alpaca.genetics = {
 	["white"] = {
 		texture = "notloc_alpaca.png",
 		speed = 2,
 		radius = 5,
-		drop = "wool:white",
+		drop = {"mcl_wool:white", "wool:white"},
 		energy_drain = 100 / 1200, -- standard 1 day (1200s)
 	},
 	["light_fawn"] = {
 		texture = "notloc_alpaca.png^[multiply:#b57a59",
 		speed = 1, -- leisurely/slow pace
 		radius = 15, -- huge grass detection radius
-		drop = "wool:beige", -- beige wool doesn't exist by default usually, maybe wool:white is safe, but requirements said beige, we'll try wool:grey or wool:orange depending on default mod. Let's use wool:beige if it exists or fallback later. Minetest has wool:brown, wool:orange, etc. Requirements say "wool:beige". Wait, standard wool are: white, grey, dark_grey, black, blue, cyan, green, dark_green, yellow, orange, red, magenta, violet. Let's just output "wool:brown" or what it requires. Actually requirement says: "Drops 'wool:beige' on death."
+		drop = {"mcl_wool:yellow", "wool:beige", "wool:brown"}, -- mineclone beige equivalent could be yellow or something, fallback chain
 		energy_drain = 100 / 1200,
 	},
 	["dark_brown"] = {
 		texture = "notloc_alpaca.png^[multiply:#371c14",
 		speed = 4, -- extremely fast
 		radius = 5,
-		drop = "wool:brown",
+		drop = {"mcl_wool:brown", "wool:brown"},
 		energy_drain = 300 / 1200, -- high energy consumption
 	},
 	["true_black"] = {
 		texture = "notloc_alpaca.png^[multiply:#111111",
 		speed = 1, -- slow
 		radius = 2, -- small grass detection
-		drop = "wool:black",
+		drop = {"mcl_wool:black", "wool:black"},
 		energy_drain = 30 / 1200, -- very low energy consumption
 	},
 }
@@ -199,9 +204,9 @@ core.register_entity("alpaca:alpaca", {
 			local pos_below = {x = math.floor(pos.x + 0.5), y = math.floor(pos.y + 0.5) - 1, z = math.floor(pos.z + 0.5)}
 			local node_below = core.get_node(pos_below)
 
-			if node_below and node_below.name == "default:dirt_with_grass" then
+			if node_below and node_below.name == node_dirt_with_grass then
 				-- Consume grass directly below
-				core.set_node(pos_below, {name="default:dirt"})
+				core.set_node(pos_below, {name=node_dirt})
 				self.energy = self.energy + 20
 				self.object:set_velocity({x=0, y=self.object:get_velocity().y, z=0})
 				self.is_moving = false
@@ -216,7 +221,7 @@ core.register_entity("alpaca:alpaca", {
 					local p_min = {x=pos.x-radius, y=pos.y-2, z=pos.z-radius}
 					local p_max = {x=pos.x+radius, y=pos.y+2, z=pos.z+radius}
 
-					local nodes = core.find_nodes_in_area(p_min, p_max, {"default:dirt_with_grass"})
+					local nodes = core.find_nodes_in_area(p_min, p_max, {node_dirt_with_grass})
 
 					if #nodes > 0 then
 						for _, target in ipairs(nodes) do
@@ -235,7 +240,7 @@ core.register_entity("alpaca:alpaca", {
 
 					if dist_sq < 1.5 then
 						-- Consume grass
-						core.set_node(target, {name="default:dirt"})
+						core.set_node(target, {name=node_dirt})
 						self.energy = self.energy + 20
 						self.object:set_velocity({x=0, y=self.object:get_velocity().y, z=0})
 						self.is_moving = false
@@ -298,7 +303,12 @@ core.register_entity("alpaca:alpaca", {
 		if pos then
 			local genetic_data = alpaca.genetics[self.color]
 			if genetic_data and genetic_data.drop then
-				core.add_item(pos, genetic_data.drop)
+				for _, item_name in ipairs(genetic_data.drop) do
+					if core.registered_items[item_name] then
+						core.add_item(pos, item_name)
+						break
+					end
+				end
 			end
 		end
 		self.object:remove()
